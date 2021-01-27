@@ -1,0 +1,92 @@
+<project name="OrderSynch" basedir="." default="main">
+
+	<property name="src.dir" value="src" />
+	<property name="build.dir" value="build" />
+	<property name="classes.dir" value="${build.dir}/classes" />
+	<property name="jar.dir" value="${build.dir}/jar" />
+	<property name="lib.dir" value="lib" />
+	<property name="resource.dir" value="resources" />
+	<property name="main-class" value="com.evanwlee.MasterTestSuite" />
+
+	<path id="classpath">
+		<fileset dir="${lib.dir}" includes="**/*.jar" />
+	</path>
+
+	<target name="clean">
+		<delete dir="${build.dir}" />
+	</target>
+
+	<target name="compile">
+		<mkdir dir="${classes.dir}" />
+		<javac includeantruntime="false" srcdir="${src.dir}" destdir="${classes.dir}" classpathref="classpath" target="1.8" source="1.8" fork="yes" executable="/bin/javac" compiler="javac1.8" />
+	</target>
+
+	<target name="set-env">
+		<property name="targetEnv" value="LOCAL" />
+		<propertyfile file="${src.dir}/${resource.dir}/app.properties">
+			<entry key="APP.ENV" value="${targetEnv}" />
+		</propertyfile>
+		<replaceregexp file="${src.dir}/${resource.dir}/app.properties" match="^#.*\n" replace="" />
+
+		<propertyfile file="${src.dir}/${resource.dir}/persistence.properties">
+			<entry key="DB.ENV" value="${targetEnv}" />
+		</propertyfile>
+		<replaceregexp file="${src.dir}/${resource.dir}/persistence.properties" match="^#.*\n" replace="" />
+	</target>
+	
+	<target name="get-env">
+		<loadproperties srcFile="${src.dir}/${resource.dir}/app.properties" />
+		<echo>APP current environment: ${APP.ENV}</echo>
+		<echoproperties>
+			<propertyset>
+				<propertyref prefix="APP.${APP.ENV}" />
+			</propertyset>
+		</echoproperties>
+		<loadproperties srcFile="${src.dir}/${resource.dir}/persistence.properties" />
+		<echo>DB current environment: ${DB.ENV}</echo>
+		<echoproperties>
+			<propertyset>
+				<propertyref prefix="DB.${DB.ENV}" />
+			</propertyset>
+		</echoproperties>
+		<loadproperties srcFile="${src.dir}/${resource.dir}/workers.properties" />
+		<echo>Workers configuratoin: ${DB.ENV}</echo>
+		<echoproperties>
+			<propertyset>
+				<propertyref prefix="WORKER" />
+			</propertyset>
+		</echoproperties>
+	</target>
+	
+	<target name="jar" depends="compile">
+		<mkdir dir="${resource.dir}" />
+		<copy todir="${resource.dir}">
+			<fileset dir="${src.dir}/resources" />
+		</copy>
+		<jar destfile="${lib.dir}/${ant.project.name}.jar" basedir="${classes.dir}">
+			<manifest>
+				<attribute name="Main-Class" value="${main-class}" />
+			</manifest>
+			<fileset file="${src.dir}/log4j.properties" />
+
+			<fileset dir="." includes="resources/**" />
+		</jar>
+		<delete includeEmptyDirs="true">
+			<fileset dir="${resource.dir}" />
+		</delete>
+	</target>
+
+	<target name="run" depends="jar">
+		<java fork="true" classname="${main-class}">
+			<classpath>
+				<path refid="classpath" />
+				<path location="${jar.dir}/${ant.project.name}.jar" />
+			</classpath>
+		</java>
+	</target>
+
+	<target name="clean-build" depends="clean,jar" />
+
+	<target name="main" depends="get-env,clean-build" />
+
+</project>
